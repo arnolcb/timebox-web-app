@@ -1,15 +1,14 @@
+// src/pages/welcome.tsx
 import React from "react";
-import { useHistory } from "react-router-dom";
 import { Button, Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { CalendarModal } from "../components/calendar-modal";
 
 export const WelcomePage: React.FC = () => {
-  const history = useHistory();
+  const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   
-  const createNewSheet = () => {
-    // In a real app, we would create a new sheet and get its ID
-    const newSheetId = `sheet-${Date.now()}`;
-    history.push(`/timebox/${newSheetId}`);
+  const openCalendar = () => {
+    setIsCalendarOpen(true);
   };
   
   return (
@@ -34,7 +33,7 @@ export const WelcomePage: React.FC = () => {
               </p>
               <Button 
                 color="primary" 
-                onPress={createNewSheet}
+                onPress={openCalendar}
                 startContent={<Icon icon="lucide:plus" />}
               >
                 Create New Sheet
@@ -108,6 +107,12 @@ export const WelcomePage: React.FC = () => {
           </CardBody>
         </Card>
       </div>
+      
+      {/* Calendar Modal */}
+      <CalendarModal 
+        isOpen={isCalendarOpen} 
+        onClose={() => setIsCalendarOpen(false)} 
+      />
     </div>
   );
 };

@@ -1,37 +1,61 @@
+// src/components/brain-dump.tsx
 import React from "react";
 import { Card, CardHeader, CardBody, Textarea, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { TimeboxData } from "../services/timeboxService";
 
 interface Note {
   id: string;
   content: string;
 }
 
-export const BrainDump: React.FC = () => {
-  const [notes, setNotes] = React.useState<Note[]>([
-    { id: "n1", content: "Research new marketing strategies for Q4" },
-    { id: "n2", content: "Don't forget to call the client about project timeline" }
-  ]);
+interface BrainDumpProps {
+  timeboxId?: string;
+  timebox?: TimeboxData | null;
+  onUpdate?: (data: Partial<TimeboxData>) => Promise<void>;
+}
+
+export const BrainDump: React.FC<BrainDumpProps> = ({ timeboxId, timebox, onUpdate }) => {
   const [newNote, setNewNote] = React.useState("");
+  const [isUpdating, setIsUpdating] = React.useState(false);
   
-  const handleAddNote = () => {
-    if (newNote.trim() === "") return;
+  const notes = timebox?.notes || [];
+  
+  const updateNotes = async (newNotes: Note[]) => {
+    if (!timeboxId || !onUpdate) return;
     
-    setNotes([
-      ...notes,
-      { id: `n-${Date.now()}`, content: newNote }
-    ]);
+    try {
+      setIsUpdating(true);
+      await onUpdate({ notes: newNotes });
+    } catch (error) {
+      console.error('Failed to update notes:', error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+  
+  const handleAddNote = async () => {
+    if (newNote.trim() === "" || !timeboxId) return;
+    
+    const newNoteObj: Note = {
+      id: `n-${Date.now()}`,
+      content: newNote.trim()
+    };
+    
+    await updateNotes([...notes, newNoteObj]);
     setNewNote("");
   };
   
-  const handleDeleteNote = (id: string) => {
-    setNotes(notes.filter(note => note.id !== id));
+  const handleDeleteNote = async (id: string) => {
+    const updatedNotes = notes.filter(note => note.id !== id);
+    await updateNotes(updatedNotes);
   };
   
-  const handleUpdateNote = (id: string, content: string) => {
-    setNotes(notes.map(note => 
+  const handleUpdateNote = async (id: string, content: string) => {
+    const updatedNotes = notes.map(note => 
       note.id === id ? { ...note, content } : note
-    ));
+    );
+    await updateNotes(updatedNotes);
   };
   
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -40,12 +64,31 @@ export const BrainDump: React.FC = () => {
     }
   };
   
+  if (!timeboxId) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Icon icon="lucide:brain" className="text-primary" />
+            <h2 className="font-semibold">Brain Dump</h2>
+          </div>
+        </CardHeader>
+        <CardBody>
+          <p className="text-foreground-500 text-center py-4">
+            Select a timebox to manage notes
+          </p>
+        </CardBody>
+      </Card>
+    );
+  }
+  
   return (
     <Card>
       <CardHeader className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Icon icon="lucide:brain" className="text-primary" />
           <h2 className="font-semibold">Brain Dump</h2>
+          {isUpdating && <Icon icon="lucide:loader-2" className="animate-spin text-sm" />}
         </div>
       </CardHeader>
       <CardBody>
@@ -60,6 +103,7 @@ export const BrainDump: React.FC = () => {
                 classNames={{
                   input: "min-h-[60px]"
                 }}
+                isDisabled={isUpdating}
               />
               <Button
                 isIconOnly
@@ -67,6 +111,7 @@ export const BrainDump: React.FC = () => {
                 variant="light"
                 className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                 onPress={() => handleDeleteNote(note.id)}
+                isDisabled={isUpdating}
               >
                 <Icon icon="lucide:x" className="text-foreground-400 text-sm" />
               </Button>
@@ -82,13 +127,14 @@ export const BrainDump: React.FC = () => {
             onKeyDown={handleKeyDown}
             size="sm"
             minRows={2}
+            isDisabled={isUpdating}
           />
           <Button
             color="primary"
             size="sm"
             variant="flat"
             onPress={handleAddNote}
-            isDisabled={newNote.trim() === ""}
+            isDisabled={newNote.trim() === "" || isUpdating}
             startContent={<Icon icon="lucide:plus" />}
             className="self-end"
           >

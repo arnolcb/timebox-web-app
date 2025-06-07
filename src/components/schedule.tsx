@@ -1,6 +1,8 @@
+// src/components/schedule.tsx
 import React from "react";
 import { Card, CardHeader, CardBody, Input, Button, Divider } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { TimeboxData } from "../services/timeboxService";
 
 interface TimeBlock {
   id: string;
@@ -10,17 +12,14 @@ interface TimeBlock {
   color: "default" | "primary" | "secondary" | "success" | "warning" | "danger";
 }
 
-export const Schedule: React.FC = () => {
-  const [timeBlocks, setTimeBlocks] = React.useState<TimeBlock[]>([
-    { id: "tb1", startTime: "08:00", endTime: "09:30", activity: "Morning planning and email", color: "default" },
-    { id: "tb2", startTime: "09:30", endTime: "11:00", activity: "Work on project proposal", color: "primary" },
-    { id: "tb3", startTime: "11:00", endTime: "12:00", activity: "Team meeting", color: "secondary" },
-    { id: "tb4", startTime: "12:00", endTime: "13:00", activity: "Lunch break", color: "success" },
-    { id: "tb5", startTime: "13:00", endTime: "15:00", activity: "Deep work session", color: "primary" },
-    { id: "tb6", startTime: "15:00", endTime: "16:00", activity: "Client call", color: "warning" },
-    { id: "tb7", startTime: "16:00", endTime: "17:30", activity: "Review and plan for tomorrow", color: "default" },
-  ]);
-  
+interface ScheduleProps {
+  timeboxId?: string;
+  timebox?: TimeboxData | null;
+  onUpdate?: (data: Partial<TimeboxData>) => Promise<void>;
+}
+
+export const Schedule: React.FC<ScheduleProps> = ({ timeboxId, timebox, onUpdate }) => {
+  const [isUpdating, setIsUpdating] = React.useState(false);
   const [newBlock, setNewBlock] = React.useState<Omit<TimeBlock, "id">>({
     startTime: "",
     endTime: "",
@@ -28,17 +27,33 @@ export const Schedule: React.FC = () => {
     color: "default"
   });
   
+  const timeBlocks = timebox?.schedule || [];
   const colorOptions: Array<TimeBlock["color"]> = [
     "default", "primary", "secondary", "success", "warning", "danger"
   ];
   
-  const handleAddTimeBlock = () => {
-    if (!newBlock.startTime || !newBlock.endTime || !newBlock.activity) return;
+  const updateSchedule = async (newSchedule: TimeBlock[]) => {
+    if (!timeboxId || !onUpdate) return;
     
-    setTimeBlocks([
-      ...timeBlocks,
-      { ...newBlock, id: `tb-${Date.now()}` }
-    ]);
+    try {
+      setIsUpdating(true);
+      await onUpdate({ schedule: newSchedule });
+    } catch (error) {
+      console.error('Failed to update schedule:', error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+  
+  const handleAddTimeBlock = async () => {
+    if (!newBlock.startTime || !newBlock.endTime || !newBlock.activity || !timeboxId) return;
+    
+    const newTimeBlock: TimeBlock = {
+      ...newBlock,
+      id: `tb-${Date.now()}`
+    };
+    
+    await updateSchedule([...timeBlocks, newTimeBlock]);
     
     setNewBlock({
       startTime: "",
@@ -48,25 +63,43 @@ export const Schedule: React.FC = () => {
     });
   };
   
-  const handleDeleteTimeBlock = (id: string) => {
-    setTimeBlocks(timeBlocks.filter(block => block.id !== id));
+  const handleDeleteTimeBlock = async (id: string) => {
+    const updatedBlocks = timeBlocks.filter(block => block.id !== id);
+    await updateSchedule(updatedBlocks);
   };
   
-  const handleUpdateTimeBlock = (id: string, field: keyof Omit<TimeBlock, "id">, value: string) => {
-    setTimeBlocks(timeBlocks.map(block => 
+  const handleUpdateTimeBlock = async (id: string, field: keyof Omit<TimeBlock, "id">, value: string) => {
+    const updatedBlocks = timeBlocks.map(block => 
       block.id === id ? { ...block, [field]: value } : block
-    ));
+    );
+    await updateSchedule(updatedBlocks);
   };
   
-  const handleColorChange = (id: string, color: TimeBlock["color"]) => {
-    setTimeBlocks(timeBlocks.map(block => 
-      block.id === id ? { ...block, color } : block
-    ));
+  const handleColorChange = async (id: string, color: TimeBlock["color"]) => {
+    await handleUpdateTimeBlock(id, "color", color);
   };
   
   const sortedTimeBlocks = [...timeBlocks].sort((a, b) => {
     return a.startTime.localeCompare(b.startTime);
   });
+  
+  if (!timeboxId) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Icon icon="lucide:clock" className="text-primary" />
+            <h2 className="font-semibold">Schedule</h2>
+          </div>
+        </CardHeader>
+        <CardBody>
+          <p className="text-foreground-500 text-center py-4">
+            Select a timebox to manage schedule
+          </p>
+        </CardBody>
+      </Card>
+    );
+  }
   
   return (
     <Card>
@@ -74,6 +107,7 @@ export const Schedule: React.FC = () => {
         <div className="flex items-center gap-2">
           <Icon icon="lucide:clock" className="text-primary" />
           <h2 className="font-semibold">Schedule</h2>
+          {isUpdating && <Icon icon="lucide:loader-2" className="animate-spin text-sm" />}
         </div>
       </CardHeader>
       <CardBody>
@@ -90,6 +124,7 @@ export const Schedule: React.FC = () => {
                         className={`w-4 h-4 rounded-full bg-${color} opacity-0 group-hover:opacity-100 transition-opacity ${block.color === color ? 'ring-2 ring-offset-1' : ''}`}
                         onClick={() => handleColorChange(block.id, color)}
                         aria-label={`Set color to ${color}`}
+                        disabled={isUpdating}
                       />
                     ))}
                   </div>
@@ -103,6 +138,7 @@ export const Schedule: React.FC = () => {
                     inputWrapper: "bg-transparent",
                     input: "bg-transparent"
                   }}
+                  isDisabled={isUpdating}
                 />
                 <Button
                   isIconOnly
@@ -110,6 +146,7 @@ export const Schedule: React.FC = () => {
                   variant="light"
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                   onPress={() => handleDeleteTimeBlock(block.id)}
+                  isDisabled={isUpdating}
                 >
                   <Icon icon="lucide:x" className="text-foreground-400 text-sm" />
                 </Button>
@@ -128,6 +165,7 @@ export const Schedule: React.FC = () => {
             onValueChange={(value) => setNewBlock({...newBlock, startTime: value})}
             variant="bordered"
             size="sm"
+            isDisabled={isUpdating}
           />
           <Input
             type="time"
@@ -136,6 +174,7 @@ export const Schedule: React.FC = () => {
             onValueChange={(value) => setNewBlock({...newBlock, endTime: value})}
             variant="bordered"
             size="sm"
+            isDisabled={isUpdating}
           />
           <Input
             label="Activity"
@@ -144,6 +183,7 @@ export const Schedule: React.FC = () => {
             onValueChange={(value) => setNewBlock({...newBlock, activity: value})}
             variant="bordered"
             size="sm"
+            isDisabled={isUpdating}
           />
         </div>
         
@@ -155,6 +195,7 @@ export const Schedule: React.FC = () => {
                 className={`w-6 h-6 rounded-full bg-${color} ${newBlock.color === color ? 'ring-2 ring-offset-1' : ''}`}
                 onClick={() => setNewBlock({...newBlock, color})}
                 aria-label={`Set color to ${color}`}
+                disabled={isUpdating}
               />
             ))}
           </div>
@@ -164,7 +205,7 @@ export const Schedule: React.FC = () => {
             size="sm"
             variant="flat"
             onPress={handleAddTimeBlock}
-            isDisabled={!newBlock.startTime || !newBlock.endTime || !newBlock.activity}
+            isDisabled={!newBlock.startTime || !newBlock.endTime || !newBlock.activity || isUpdating}
             startContent={<Icon icon="lucide:plus" />}
           >
             Add Time Block

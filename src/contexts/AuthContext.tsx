@@ -1,4 +1,13 @@
+// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  signInWithCredential,
+  signOut,
+  GoogleAuthProvider 
+} from 'firebase/auth';
+import { auth, googleProvider } from '../firebase';
 
 interface User {
   id: string;
@@ -10,7 +19,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (credential: string) => Promise<void>;
+  login: (credential?: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -34,85 +43,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error('Error parsing saved user:', error);
-        localStorage.removeItem('user');
+    // Listen to authentication state changes
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const userData: User = {
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || 'User',
+          email: firebaseUser.email || '',
+          avatar: firebaseUser.photoURL || ''
+        };
+        setUser(userData);
+        console.log('✅ User authenticated:', userData.email);
+      } else {
+        setUser(null);
+        console.log('❌ User signed out');
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = async (credential: string) => {
+  const login = async (credential?: string) => {
     try {
       setIsLoading(true);
       
-      // Decode the JWT token to get user info
-      const payloadBase64 = credential.split('.')[1];
-      const payload = JSON.parse(atob(payloadBase64));
+      if (credential) {
+        // If we receive a credential (from Google Identity), create Firebase credential
+        const googleCredential = GoogleAuthProvider.credential(credential);
+        await signInWithCredential(auth, googleCredential);
+      } else {
+        // Use Firebase popup sign-in directly
+        const result = await signInWithPopup(auth, googleProvider);
+        console.log('🔐 Firebase popup sign-in successful:', result.user.email);
+      }
       
-      const userData: User = {
-        id: payload.sub,
-        name: payload.name,
-        email: payload.email,
-        avatar: payload.picture
-      };
-
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('google_token', credential);
-      
-    } catch (error) {
-      console.error('Login error:', error);
-      localStorage.removeItem('user');
-      localStorage.removeItem('google_token');
-      throw new Error('Failed to process login credentials');
-    } finally {
+    } catch (error: any) {
+      console.error('❌ Login error:', error);
       setIsLoading(false);
+      throw new Error(error.message || 'Failed to login with Google');
     }
   };
 
-  const logout = () => {
-    // Clear user state
-    setUser(null);
-    
-    // Clear localStorage
-    localStorage.removeItem('user');
-    localStorage.removeItem('google_token');
-    localStorage.removeItem('g_state');
-    
-    // Clear session storage
-    sessionStorage.clear();
-    
-    // Clear Google session
+  const logout = async () => {
     try {
+      await signOut(auth);
+      
+      // Clear Google session
       if (window.google?.accounts?.id) {
         window.google.accounts.id.disableAutoSelect();
         window.google.accounts.id.cancel();
       }
+      
     } catch (error) {
-      // Ignore errors during cleanup
+      console.error('Logout error:', error);
     }
-    
-    // Clear Google cookies
-    const cookiesToClear = [
-      'g_state', 'g_csrf_token', '__Secure-1PSID', '__Secure-3PSID',
-      'SAPISID', 'APISID', 'SSID', 'HSID', 'SID', 'SIDCC'
-    ];
-    
-    cookiesToClear.forEach(cookieName => {
-      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.google.com;`;
-    });
-    
-    // Force page reload for complete cleanup
-    setTimeout(() => {
-      window.location.href = '/login';
-    }, 100);
   };
 
   const value: AuthContextType = {

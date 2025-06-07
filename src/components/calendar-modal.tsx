@@ -1,10 +1,11 @@
+// src/components/calendar-modal.tsx
 import React from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure } from "@heroui/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Spinner, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useHistory } from "react-router-dom";
 import { DatePicker } from "@heroui/react";
 import { parseDate, getLocalTimeZone, today, CalendarDate } from "@internationalized/date";
-import { useDateFormatter } from "@react-aria/i18n";
+import { useTimeboxes } from "../hooks/useTimeboxes";
 
 interface CalendarModalProps {
   isOpen: boolean;
@@ -13,41 +14,69 @@ interface CalendarModalProps {
 
 export const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose }) => {
   const history = useHistory();
+  const { timeboxes, createTimebox, checkDateExists } = useTimeboxes();
   const [selectedDate, setSelectedDate] = React.useState<CalendarDate>(today(getLocalTimeZone()));
-  const formatter = useDateFormatter({ dateStyle: "full" });
+  const [customTitle, setCustomTitle] = React.useState("");
+  const [isCreating, setIsCreating] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   
-  // Function to check if a date already has a timebox sheet
-  const [existingDates, setExistingDates] = React.useState<string[]>([
-    "2023-10-16", "2023-10-17", "2023-10-18", "2023-10-20", "2023-10-31"
-  ]);
+  // Get existing dates from timeboxes
+  const existingDates = timeboxes.map(tb => tb.date);
+  
+  // Generate default title when date changes
+  React.useEffect(() => {
+    try {
+      const date = new Date(selectedDate.toString());
+      const defaultTitle = date.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      setCustomTitle(defaultTitle);
+    } catch (e) {
+      setCustomTitle("New Timebox");
+    }
+  }, [selectedDate]);
   
   const isDateUnavailable = (date: CalendarDate) => {
     const dateStr = date.toString();
     return existingDates.includes(dateStr);
   };
   
-  const handleCreateSheet = () => {
-    // Format the date as YYYY-MM-DD
-    const dateStr = selectedDate.toString();
-    
-    // Check if sheet already exists
-    if (existingDates.includes(dateStr)) {
-      // Navigate to existing sheet (in a real app, you'd look up the ID)
-      const existingSheetId = `sheet-${dateStr}`;
-      history.push(`/timebox/${existingSheetId}`);
-    } else {
-      // Create new sheet with date as ID
-      const newSheetId = `sheet-${dateStr}`;
+  const handleCreateSheet = async () => {
+    try {
+      setIsCreating(true);
+      setError(null);
       
-      // In a real app, you would save this to a database
-      setExistingDates([...existingDates, dateStr]);
+      const dateStr = selectedDate.toString();
       
-      // Navigate to the new sheet
-      history.push(`/timebox/${newSheetId}`);
+      // Check if sheet already exists
+      const exists = await checkDateExists(dateStr);
+      
+      if (exists) {
+        // Navigate to existing sheet
+        const existingSheet = timeboxes.find(tb => tb.date === dateStr);
+        if (existingSheet) {
+          history.push(`/timebox/${existingSheet.id}`);
+        }
+      } else {
+        // Create new sheet with custom title
+        const newTimebox = await createTimebox(dateStr, customTitle.trim() || undefined);
+        history.push(`/timebox/${newTimebox.id}`);
+      }
+      
+      onClose();
+      // Reset title for next time
+      setCustomTitle("");
+    } catch (error) {
+      console.error('Failed to create/navigate to timebox:', error);
+      setError('Failed to create timebox. Please try again.');
+    } finally {
+      setIsCreating(false);
     }
-    
-    onClose();
   };
+  
+  const selectedDateExists = isDateUnavailable(selectedDate);
   
   return (
     <Modal isOpen={isOpen} onOpenChange={onClose} size="md">
@@ -55,14 +84,26 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose })
         {() => (
           <>
             <ModalHeader className="flex flex-col gap-1">
-              Create Timebox Sheet
+              {selectedDateExists ? "View Timebox Sheet" : "Create Timebox Sheet"}
             </ModalHeader>
             <ModalBody>
               <p className="text-foreground-500 mb-4">
-                Select a date to create or view a timebox sheet. You can only have one sheet per day.
+                {selectedDateExists 
+                  ? "A timebox sheet already exists for this date. You'll be redirected to it."
+                  : "Select a date and customize the title for your new timebox sheet."
+                }
               </p>
               
-              <div className="flex flex-col items-center">
+              {error && (
+                <div className="mb-4 p-3 bg-danger-50 border border-danger-200 rounded-md">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="lucide:alert-circle" className="text-danger" />
+                    <span className="text-danger text-sm">{error}</span>
+                  </div>
+                </div>
+              )}
+              
+              <div className="space-y-4">
                 <DatePicker
                   label="Select Date"
                   value={selectedDate}
@@ -72,20 +113,40 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose })
                   maxValue={parseDate("2025-12-31")}
                 />
                 
-                {isDateUnavailable(selectedDate) && (
-                  <div className="mt-4 p-2 bg-warning-100 text-warning-700 rounded-md flex items-center gap-2">
-                    <Icon icon="lucide:info" />
-                    <span>A timebox sheet already exists for this date. You'll be redirected to it.</span>
+                {!selectedDateExists && (
+                  <Input
+                    label="Timebox Title"
+                    placeholder="Enter a custom title"
+                    value={customTitle}
+                    onValueChange={setCustomTitle}
+                    description="Leave empty to use the default date format"
+                    startContent={<Icon icon="lucide:edit" className="text-foreground-400" />}
+                  />
+                )}
+                
+                {selectedDateExists && (
+                  <div className="p-3 bg-warning-50 border border-warning-200 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <Icon icon="lucide:info" className="text-warning-600" />
+                      <span className="text-warning-700 text-sm">
+                        Sheet exists for {selectedDate.toString()}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
             </ModalBody>
             <ModalFooter>
-              <Button variant="flat" onPress={onClose}>
+              <Button variant="flat" onPress={onClose} isDisabled={isCreating}>
                 Cancel
               </Button>
-              <Button color="primary" onPress={handleCreateSheet}>
-                {isDateUnavailable(selectedDate) ? "View Sheet" : "Create Sheet"}
+              <Button 
+                color="primary" 
+                onPress={handleCreateSheet}
+                isDisabled={isCreating}
+                startContent={isCreating ? <Spinner size="sm" /> : null}
+              >
+                {isCreating ? "Creating..." : (selectedDateExists ? "View Sheet" : "Create Sheet")}
               </Button>
             </ModalFooter>
           </>

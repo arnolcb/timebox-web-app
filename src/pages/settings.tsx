@@ -1,61 +1,123 @@
+// src/pages/settings.tsx
 import React from "react";
 import { Card, CardHeader, CardBody, Divider, Switch, Avatar, Button, Input, Tabs, Tab } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useTheme } from "@heroui/use-theme";
 import { useAuth } from "../contexts/AuthContext";
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+
+interface UserSettings {
+  notifications: {
+    email: boolean;
+    reminders: boolean;
+    weeklyReport: boolean;
+  };
+  preferences: {
+    startTime: string;
+    endTime: string;
+    timeInterval: string;
+    darkMode: boolean;
+  };
+}
+
+const defaultSettings: UserSettings = {
+  notifications: {
+    email: true,
+    reminders: true,
+    weeklyReport: false
+  },
+  preferences: {
+    startTime: "08:00",
+    endTime: "18:00",
+    timeInterval: "30",
+    darkMode: false
+  }
+};
 
 export const SettingsPage: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
-  const isDark = theme === "dark";
+  const [userSettings, setUserSettings] = React.useState<UserSettings>(defaultSettings);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
   
-  // User settings state - now initialized with real user data
-  const [userSettings, setUserSettings] = React.useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    avatar: user?.avatar || "",
-    notifications: {
-      email: true,
-      reminders: true,
-      weeklyReport: false
-    },
-    preferences: {
-      startTime: "08:00",
-      endTime: "18:00",
-      timeInterval: "30" // minutes
-    }
-  });
-
-  // Update user settings when user data changes
+  // Load user settings from Firebase
   React.useEffect(() => {
-    if (user) {
-      setUserSettings(prev => ({
-        ...prev,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar
-      }));
+    const loadSettings = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setIsLoading(true);
+        const userDocRef = doc(db, 'users', user.id);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          if (data.settings) {
+            setUserSettings({ ...defaultSettings, ...data.settings });
+            // Apply dark mode from saved settings
+            if (data.settings.preferences?.darkMode !== undefined) {
+              setTheme(data.settings.preferences.darkMode ? "dark" : "light");
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [user?.id, setTheme]);
+
+  // Save settings to Firebase
+  const saveSettings = async (newSettings: UserSettings) => {
+    if (!user?.id) return;
+    
+    try {
+      setIsSaving(true);
+      const userDocRef = doc(db, 'users', user.id);
+      await setDoc(userDocRef, { 
+        settings: newSettings,
+        updatedAt: new Date()
+      }, { merge: true });
+      
+      setUserSettings(newSettings);
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+    } finally {
+      setIsSaving(false);
     }
-  }, [user]);
+  };
   
-  const handleNotificationChange = (key: keyof typeof userSettings.notifications) => {
-    setUserSettings({
+  const handleNotificationChange = async (key: keyof typeof userSettings.notifications) => {
+    const newSettings = {
       ...userSettings,
       notifications: {
         ...userSettings.notifications,
         [key]: !userSettings.notifications[key]
       }
-    });
+    };
+    await saveSettings(newSettings);
   };
   
-  const handlePreferenceChange = (key: keyof typeof userSettings.preferences, value: string) => {
-    setUserSettings({
+  const handlePreferenceChange = async (key: keyof typeof userSettings.preferences, value: string | boolean) => {
+    const newSettings = {
       ...userSettings,
       preferences: {
         ...userSettings.preferences,
         [key]: value
       }
-    });
+    };
+    
+    // If changing dark mode, apply immediately
+    if (key === 'darkMode') {
+      setTheme(value ? "dark" : "light");
+    }
+    
+    await saveSettings(newSettings);
   };
 
   if (!user) {
@@ -83,21 +145,17 @@ export const SettingsPage: React.FC = () => {
           <Card className="mt-4">
             <CardHeader className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">User Profile</h2>
-              <Button color="primary" variant="flat" size="sm">Save Changes</Button>
             </CardHeader>
             <Divider />
             <CardBody>
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="flex flex-col items-center gap-4">
                   <Avatar
-                    src={userSettings.avatar}
+                    src={user.avatar}
                     className="w-24 h-24"
                     showFallback
-                    name={userSettings.name}
+                    name={user.name}
                   />
-                  <Button size="sm" variant="flat" disabled>
-                    Change Avatar
-                  </Button>
                   <p className="text-xs text-foreground-400 text-center">
                     Avatar is managed by your Google account
                   </p>
@@ -106,20 +164,17 @@ export const SettingsPage: React.FC = () => {
                 <div className="flex-1 space-y-4">
                   <Input
                     label="Name"
-                    value={userSettings.name}
-                    onValueChange={(value) => setUserSettings({...userSettings, name: value})}
+                    value={user.name}
+                    isReadOnly
                     description="This name is synced from your Google account"
                   />
                   <Input
                     label="Email"
-                    value={userSettings.email}
+                    value={user.email}
                     isReadOnly
                     type="email"
                     description="Email cannot be changed - it's linked to your Google account"
                   />
-                  <Button color="primary" className="mt-2">
-                    Update Profile
-                  </Button>
                 </div>
               </div>
             </CardBody>
@@ -135,6 +190,7 @@ export const SettingsPage: React.FC = () => {
           <Card className="mt-4">
             <CardHeader>
               <h2 className="text-lg font-semibold">Timebox Preferences</h2>
+              {isSaving && <Icon icon="lucide:loader-2" className="animate-spin ml-2" />}
             </CardHeader>
             <Divider />
             <CardBody>
@@ -145,10 +201,11 @@ export const SettingsPage: React.FC = () => {
                     <p className="text-sm text-foreground-500">Switch between light and dark themes</p>
                   </div>
                   <Switch
-                    isSelected={isDark}
-                    onValueChange={() => setTheme(isDark ? "light" : "dark")}
+                    isSelected={userSettings.preferences.darkMode}
+                    onValueChange={(value) => handlePreferenceChange("darkMode", value)}
                     startContent={<Icon icon="lucide:sun" />}
                     endContent={<Icon icon="lucide:moon" />}
+                    isDisabled={isSaving}
                   />
                 </div>
                 
@@ -163,12 +220,14 @@ export const SettingsPage: React.FC = () => {
                       label="Default Start Time"
                       value={userSettings.preferences.startTime}
                       onValueChange={(value) => handlePreferenceChange("startTime", value)}
+                      isDisabled={isSaving}
                     />
                     <Input
                       type="time"
                       label="Default End Time"
                       value={userSettings.preferences.endTime}
                       onValueChange={(value) => handlePreferenceChange("endTime", value)}
+                      isDisabled={isSaving}
                     />
                   </div>
                   
@@ -182,6 +241,7 @@ export const SettingsPage: React.FC = () => {
                           variant={userSettings.preferences.timeInterval === interval ? "solid" : "flat"}
                           color={userSettings.preferences.timeInterval === interval ? "primary" : "default"}
                           onPress={() => handlePreferenceChange("timeInterval", interval)}
+                          isDisabled={isSaving}
                         >
                           {interval} min
                         </Button>
@@ -204,6 +264,7 @@ export const SettingsPage: React.FC = () => {
                       <Switch
                         isSelected={userSettings.notifications.email}
                         onValueChange={() => handleNotificationChange("email")}
+                        isDisabled={isSaving}
                       />
                     </div>
                     
@@ -215,6 +276,7 @@ export const SettingsPage: React.FC = () => {
                       <Switch
                         isSelected={userSettings.notifications.reminders}
                         onValueChange={() => handleNotificationChange("reminders")}
+                        isDisabled={isSaving}
                       />
                     </div>
                     
@@ -226,14 +288,11 @@ export const SettingsPage: React.FC = () => {
                       <Switch
                         isSelected={userSettings.notifications.weeklyReport}
                         onValueChange={() => handleNotificationChange("weeklyReport")}
+                        isDisabled={isSaving}
                       />
                     </div>
                   </div>
                 </div>
-                
-                <Button color="primary">
-                  Save Preferences
-                </Button>
               </div>
             </CardBody>
           </Card>
@@ -273,23 +332,6 @@ export const SettingsPage: React.FC = () => {
                   >
                     Manage Google Security
                   </Button>
-                </div>
-                
-                <Divider />
-                
-                <div>
-                  <h3 className="font-medium text-danger mb-2">Danger Zone</h3>
-                  <div className="space-y-3">
-                    <div className="p-4 border border-danger-200 rounded-md">
-                      <h4 className="font-medium">Delete Account</h4>
-                      <p className="text-sm text-foreground-500 mb-3">
-                        Once you delete your account, there is no going back. Please be certain.
-                      </p>
-                      <Button color="danger" variant="flat">
-                        Delete Account
-                      </Button>
-                    </div>
-                  </div>
                 </div>
               </div>
             </CardBody>

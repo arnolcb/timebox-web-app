@@ -1,14 +1,9 @@
+// src/components/timebox-sheet-list.tsx
 import React from "react";
 import { useHistory, useLocation } from "react-router-dom";
-import { Button, Tooltip } from "@heroui/react";
+import { Button, Tooltip, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { addToast } from "@heroui/react";
-
-interface TimeboxSheet {
-  id: string;
-  title: string;
-  date: string;
-}
+import { useTimeboxes } from "../hooks/useTimeboxes";
 
 interface TimeboxSheetListProps {
   isCollapsed: boolean;
@@ -17,15 +12,7 @@ interface TimeboxSheetListProps {
 export const TimeboxSheetList: React.FC<TimeboxSheetListProps> = ({ isCollapsed }) => {
   const history = useHistory();
   const location = useLocation();
-  
-  // Mock data for timebox sheets
-  const [sheets, setSheets] = React.useState<TimeboxSheet[]>([
-    { id: "sheet-2023-10-16", title: "Monday Planning", date: "2023-10-16" },
-    { id: "sheet-2023-10-17", title: "Tuesday Focus", date: "2023-10-17" },
-    { id: "sheet-2023-10-18", title: "Project Deadline", date: "2023-10-18" },
-    { id: "sheet-2023-10-20", title: "Weekly Review", date: "2023-10-20" },
-    { id: "sheet-2023-10-31", title: "Monthly Goals", date: "2023-10-31" },
-  ]);
+  const { timeboxes, loading, deleteTimebox } = useTimeboxes();
   
   const navigateToSheet = (id: string) => {
     history.push(`/timebox/${id}`);
@@ -36,30 +23,42 @@ export const TimeboxSheetList: React.FC<TimeboxSheetListProps> = ({ isCollapsed 
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
   
-  // Add delete function
-  const handleDeleteSheet = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    e.preventDefault();
+  const handleDeleteSheet = async (id: string) => {
     
-    // In a real app, you would delete from a database
-    setSheets(sheets.filter(sheet => sheet.id !== id));
-    
-    // Show confirmation toast
-    addToast({
-      title: "Sheet Deleted",
-      description: "Your timebox sheet has been deleted successfully",
-      color: "success",
-    });
-    
-    // If we're on the deleted sheet, navigate home
-    if (location.pathname === `/timebox/${id}`) {
-      history.push("/");
+    try {
+      await deleteTimebox(id);
+      
+      // If we're on the deleted sheet, navigate home
+      if (location.pathname === `/timebox/${id}`) {
+        history.push("/");
+      }
+    } catch (error) {
+      console.error('Failed to delete timebox:', error);
+      // You could add a toast notification here
     }
   };
   
+  if (loading) {
+    return (
+      <div className="flex justify-center py-4">
+        <Spinner size="sm" />
+      </div>
+    );
+  }
+
+  if (timeboxes.length === 0) {
+    return (
+      <div className="text-center py-4">
+        <p className="text-xs text-foreground-400">
+          {isCollapsed ? "No sheets" : "No timebox sheets yet"}
+        </p>
+      </div>
+    );
+  }
+  
   return (
     <div className="space-y-1">
-      {sheets.map((sheet) => {
+      {timeboxes.map((sheet) => {
         const isActive = location.pathname === `/timebox/${sheet.id}`;
         
         return isCollapsed ? (
@@ -94,7 +93,7 @@ export const TimeboxSheetList: React.FC<TimeboxSheetListProps> = ({ isCollapsed 
               variant="light"
               color="danger"
               className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
-              onPress={(e) => handleDeleteSheet(e, sheet.id)}
+              onPress={() => handleDeleteSheet(sheet.id)}
             >
               <Icon icon="lucide:trash-2" className="text-xs" />
             </Button>
