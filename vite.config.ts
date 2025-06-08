@@ -12,7 +12,7 @@ export default defineConfig({
     middlewareMode: false,
   },
   // Suprimir warnings innecesarios en desarrollo
-  define: {
+  define: { 
     'process.env': {},
   },
   // Optimizar build para producción
