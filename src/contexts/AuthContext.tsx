@@ -7,7 +7,9 @@ import {
   signOut,
   GoogleAuthProvider 
 } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { useTheme } from "@heroui/use-theme";
+import { auth, googleProvider, db } from '../firebase';
 
 interface User {
   id: string;
@@ -41,10 +43,40 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { setTheme } = useTheme();
+
+  // Function to load user settings and apply theme
+  const loadUserSettings = async (userId: string) => {
+    try {
+      const userDocRef = doc(db, 'users', userId);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        if (data.settings?.preferences?.darkMode !== undefined) {
+          const isDarkMode = data.settings.preferences.darkMode;
+          setTheme(isDarkMode ? "dark" : "light");
+          console.log('🎨 Theme applied from user settings:', isDarkMode ? 'dark' : 'light');
+        } else {
+          // Si no hay configuración guardada, usar tema claro por defecto
+          setTheme("light");
+          console.log('🎨 Default theme applied: light');
+        }
+      } else {
+        // Si no existe documento de usuario, usar tema claro por defecto
+        setTheme("light");
+        console.log('🎨 No user settings found, default theme applied: light');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load user settings:', error);
+      // En caso de error, usar tema claro por defecto
+      setTheme("light");
+    }
+  };
 
   useEffect(() => {
     // Listen to authentication state changes
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const userData: User = {
           id: firebaseUser.uid,
@@ -54,15 +86,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         setUser(userData);
         console.log('✅ User authenticated:', userData.email);
+        
+        // Load user settings and apply theme
+        await loadUserSettings(firebaseUser.uid);
       } else {
         setUser(null);
-        console.log('❌ User signed out');
+        // Reset to light theme when user logs out
+        setTheme("light");
+        console.log('❌ User signed out - theme reset to light');
       }
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [setTheme]);
 
   const login = async (credential?: string) => {
     try {
@@ -94,6 +131,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         window.google.accounts.id.disableAutoSelect();
         window.google.accounts.id.cancel();
       }
+      
+      // Theme will be reset to light in the onAuthStateChanged listener
       
     } catch (error) {
       console.error('Logout error:', error);
