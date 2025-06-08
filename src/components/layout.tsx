@@ -52,6 +52,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           onOpenChange={setIsSidebarOpen}
           placement="left"
           size="xs"
+          hideCloseButton={true} // Hide the default close button
         >
           <DrawerContent>
             {(onClose) => (

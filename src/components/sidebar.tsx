@@ -19,6 +19,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   const navigateToHome = () => {
     history.push("/");
+    // Close sidebar on mobile after navigation
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  const navigateToSettings = () => {
+    history.push("/settings");
+    // Close sidebar on mobile after navigation
+    if (onClose) {
+      onClose();
+    }
   };
 
   // Replace createNewSheet function
@@ -28,9 +40,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   return (
     <aside 
-      className={`bg-content1 border-r border-divider flex flex-col ${
-        isOpen ? "w-64" : "w-0 sm:w-16"
-      } overflow-hidden h-full`} // Add h-full to ensure it fills the drawer
+      className={`bg-content1 border-r border-divider flex flex-col overflow-hidden h-full ${
+        onClose 
+          ? "w-full max-w-xs" // Mobile: full width of drawer with max width
+          : isOpen 
+            ? "w-64" // Desktop: fixed width when open
+            : "w-0 sm:w-16" // Desktop: collapsed
+      }`}
     >
       <div className="p-4 flex items-center justify-between">
         {isOpen && <h2 className="font-semibold text-lg">My Timebox</h2>}
@@ -81,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           
           {isOpen && <p className="text-xs text-foreground-500 px-2 py-1">TIMEBOX SHEETS</p>}
           
-          <TimeboxSheetList isCollapsed={!isOpen} />
+          <TimeboxSheetList isCollapsed={!isOpen} onItemClick={onClose} />
         </div>
       </div>
       
@@ -91,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           className={`w-full justify-start ${!isOpen ? "justify-center" : ""}`}
           startContent={isOpen ? <Icon icon="lucide:settings" /> : null}
           isIconOnly={!isOpen}
-          onPress={() => history.push("/settings")}
+          onPress={navigateToSettings}
         >
           {!isOpen ? <Icon icon="lucide:settings" /> : "Settings"}
         </Button>

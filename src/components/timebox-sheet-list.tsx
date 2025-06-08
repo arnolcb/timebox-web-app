@@ -7,15 +7,23 @@ import { useTimeboxes } from "../hooks/useTimeboxes";
 
 interface TimeboxSheetListProps {
   isCollapsed: boolean;
+  onItemClick?: () => void; // Add callback for mobile closing
 }
 
-export const TimeboxSheetList: React.FC<TimeboxSheetListProps> = ({ isCollapsed }) => {
+export const TimeboxSheetList: React.FC<TimeboxSheetListProps> = ({ 
+  isCollapsed,
+  onItemClick 
+}) => {
   const history = useHistory();
   const location = useLocation();
   const { timeboxes, loading, deleteTimebox } = useTimeboxes();
   
   const navigateToSheet = (id: string) => {
     history.push(`/timebox/${id}`);
+    // Close sidebar on mobile after navigation
+    if (onItemClick) {
+      onItemClick();
+    }
   };
   
   const formatDate = (dateString: string) => {
@@ -24,13 +32,16 @@ export const TimeboxSheetList: React.FC<TimeboxSheetListProps> = ({ isCollapsed 
   };
   
   const handleDeleteSheet = async (id: string) => {
-    
     try {
       await deleteTimebox(id);
       
       // If we're on the deleted sheet, navigate home
       if (location.pathname === `/timebox/${id}`) {
         history.push("/");
+        // Close sidebar on mobile after navigation
+        if (onItemClick) {
+          onItemClick();
+        }
       }
     } catch (error) {
       console.error('Failed to delete timebox:', error);

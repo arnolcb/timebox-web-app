@@ -1,7 +1,7 @@
+// src/components/navbar.tsx
 import React from "react";
 import { Button, Avatar, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { ThemeSwitcher } from "./theme-switcher";
 import { useAuth } from "../contexts/AuthContext";
 import { useHistory } from "react-router-dom";
 
@@ -20,8 +20,12 @@ export const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, isSidebarOpen, is
     history.push("/login");
   };
 
-  const handleNavigation = (path: string) => {
-    history.push(path);
+  const goToProfile = () => {
+    history.push("/settings?tab=profile");
+  };
+
+  const goToPreferences = () => {
+    history.push("/settings?tab=preferences");
   };
 
   return (
@@ -37,15 +41,11 @@ export const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, isSidebarOpen, is
           <Icon icon={isMobile ? "lucide:menu" : (isSidebarOpen ? "lucide:panel-left-close" : "lucide:panel-left-open")} className="text-xl" />
         </Button>
         <div className="flex items-center gap-2"> 
-          {/* This is a placeholder for the logo, replace with your actual logo component 
-          <div className="bg-primary p-1 rounded text-white text-xs font-bold">T</div>*/}
           <h1 className="text-lg font-medium">Timebox</h1>
         </div>
       </div>
       
       <div className="flex items-center gap-2">
-        <ThemeSwitcher />
-        
         {user ? (
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
@@ -74,20 +74,23 @@ export const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, isSidebarOpen, is
                   </div>
                 </div>
               </DropdownItem>
+              
               <DropdownItem 
                 key="profile" 
                 startContent={<Icon icon="lucide:user" />}
-                onPress={() => handleNavigation("/profile")}
+                onPress={goToProfile}
               >
                 Profile
               </DropdownItem>
+              
               <DropdownItem 
                 key="settings" 
                 startContent={<Icon icon="lucide:settings" />}
-                onPress={() => handleNavigation("/settings")}
+                onPress={goToPreferences}
               >
                 Settings
               </DropdownItem>
+              
               <DropdownItem 
                 key="logout" 
                 startContent={<Icon icon="lucide:log-out" />} 
@@ -103,7 +106,7 @@ export const Navbar: React.FC<NavbarProps> = ({ toggleSidebar, isSidebarOpen, is
             color="primary" 
             variant="flat" 
             size="sm"
-            onPress={() => handleNavigation("/login")}
+            onPress={() => history.push("/login")}
           >
             Sign In
           </Button>
