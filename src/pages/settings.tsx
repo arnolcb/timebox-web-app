@@ -4,6 +4,7 @@ import { Card, CardHeader, CardBody, Divider, Switch, Avatar, Button, Input, Tab
 import { Icon } from "@iconify/react";
 import { useTheme } from "@heroui/use-theme";
 import { useAuth } from "../contexts/AuthContext";
+import { useLocation, useHistory } from "react-router-dom";
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -38,9 +39,29 @@ const defaultSettings: UserSettings = {
 export const SettingsPage: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
+  const location = useLocation();
+  const history = useHistory();
+  
+  // Get tab from URL
+  const searchParams = new URLSearchParams(location.search);
+  const urlTab = searchParams.get('tab') || 'profile';
+  const [selectedTab, setSelectedTab] = React.useState(urlTab);
+  
   const [userSettings, setUserSettings] = React.useState<UserSettings>(defaultSettings);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+
+  // Update tab when URL changes
+  React.useEffect(() => {
+    const newTab = searchParams.get('tab') || 'profile';
+    setSelectedTab(newTab);
+  }, [location.search]);
+
+  // Handle tab change and update URL
+  const handleTabChange = (key: string) => {
+    setSelectedTab(key);
+    history.push(`/settings?tab=${key}`);
+  };
   
   // Load user settings from Firebase
   React.useEffect(() => {
@@ -135,7 +156,11 @@ export const SettingsPage: React.FC = () => {
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
       
-      <Tabs aria-label="Settings options">
+      <Tabs 
+        aria-label="Settings options"
+        selectedKey={selectedTab}
+        onSelectionChange={(key) => handleTabChange(key as string)}
+      >
         <Tab key="profile" title={
           <div className="flex items-center gap-2">
             <Icon icon="lucide:user" />
