@@ -4,11 +4,6 @@
       "VITE_BASE_PATH": "/app"
     }
   },
-  "functions": {
-    "app/**": {
-      "includeFiles": "dist/**"
-    }
-  },
   "rewrites": [
     {
       "source": "/app/(.*)",
