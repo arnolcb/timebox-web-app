@@ -17,6 +17,6 @@
     /* Linting */
     "strict": false
   },
-  "include": ["src", "plugins", "vite.config.ts"], // ← CAMBIAR ESTA LÍNEA
+  "include": ["src"],
   "references": [{"path": "./tsconfig.node.json"}]
 }
