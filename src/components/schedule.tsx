@@ -3,7 +3,7 @@ import React from "react";
 import { Card, CardHeader, CardBody, Input, Button, Divider } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { TimeboxData } from "../services/timeboxService";
-import { ModernTimePicker } from "./ModernTimePicker";
+import { CleanTimePicker } from "./CleanTimePicker";
 
 interface TimeBlock {
   id: string;
@@ -181,40 +181,41 @@ export const Schedule: React.FC<ScheduleProps> = ({ timeboxId, timebox, onUpdate
             Add New Time Block
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-            <ModernTimePicker
-              label="Start Time"
-              value={newBlock.startTime}
-              onChange={(time) => setNewBlock({...newBlock, startTime: time})}
-              placeholder="Select start time"
-              disabled={isUpdating}
-              className="md:col-span-1"
-            />
+          <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-5 sm:gap-3">
+            <div className="sm:col-span-1">
+              <CleanTimePicker
+                label="Start Time"
+                value={newBlock.startTime}
+                onChange={(time) => setNewBlock({...newBlock, startTime: time})}
+                disabled={isUpdating}
+              />
+            </div>
             
-            <ModernTimePicker
-              label="End Time"
-              value={newBlock.endTime}
-              onChange={(time) => setNewBlock({...newBlock, endTime: time})}
-              placeholder="Select end time"
-              disabled={isUpdating}
-              className="md:col-span-1"
-            />
+            <div className="sm:col-span-1">
+              <CleanTimePicker
+                label="End Time"
+                value={newBlock.endTime}
+                onChange={(time) => setNewBlock({...newBlock, endTime: time})}
+                disabled={isUpdating}
+              />
+            </div>
             
-            <Input
-              label="Activity"
-              placeholder="What are you doing?"
-              value={newBlock.activity}
-              onValueChange={(value) => setNewBlock({...newBlock, activity: value})}
-              variant="bordered"
-              size="md"
-              isDisabled={isUpdating}
-              startContent={<Icon icon="lucide:activity" className="text-foreground-400 w-4 h-4" />}
-              className="md:col-span-3"
-              classNames={{
-                inputWrapper: "h-12",
-                input: "text-sm"
-              }}
-            />
+            <div className="sm:col-span-3">
+              <Input
+                label="Activity"
+                placeholder="What are you doing?"
+                value={newBlock.activity}
+                onValueChange={(value) => setNewBlock({...newBlock, activity: value})}
+                variant="bordered"
+                size="md"
+                isDisabled={isUpdating}
+                startContent={<Icon icon="lucide:activity" className="text-foreground-400 w-4 h-4" />}
+                classNames={{
+                  inputWrapper: "h-12",
+                  input: "text-sm"
+                }}
+              />
+            </div>
           </div>
           
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">

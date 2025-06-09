@@ -1,4 +1,4 @@
-// src/components/ModernTimePicker.tsx
+// src/components/CleanTimePicker.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Button, Popover, PopoverTrigger, PopoverContent } from '@heroui/react';
 import { Icon } from '@iconify/react';
@@ -7,16 +7,14 @@ interface TimePickerProps {
   value: string;
   onChange: (time: string) => void;
   label?: string;
-  placeholder?: string;
   disabled?: boolean;
   className?: string;
 }
 
-export const ModernTimePicker: React.FC<TimePickerProps> = ({
+export const CleanTimePicker: React.FC<TimePickerProps> = ({
   value,
   onChange,
   label = "Time",
-  placeholder = "Select time",
   disabled = false,
   className = ""
 }) => {
@@ -65,7 +63,7 @@ export const ModernTimePicker: React.FC<TimePickerProps> = ({
       const displayPeriod = h >= 12 ? 'PM' : 'AM';
       return `${displayHour}:${m.toString().padStart(2, '0')} ${displayPeriod}`;
     })() : 
-    placeholder;
+    null;
 
   const handleApply = () => {
     const formattedTime = formatTime(hour, minute, period);
@@ -74,7 +72,7 @@ export const ModernTimePicker: React.FC<TimePickerProps> = ({
   };
 
   const hours = Array.from({ length: 12 }, (_, i) => i + 1);
-  const minutes = Array.from({ length: 12 }, (_, i) => i * 5); // 0, 5, 10, 15, ..., 55
+  const minutes = Array.from({ length: 12 }, (_, i) => i * 5);
 
   return (
     <div className={className}>
@@ -86,16 +84,18 @@ export const ModernTimePicker: React.FC<TimePickerProps> = ({
         <PopoverTrigger>
           <Button
             variant="bordered"
-            className="w-full justify-start h-12 text-left"
+            className="w-full justify-between h-12 text-left px-3"
             isDisabled={disabled}
             startContent={<Icon icon="lucide:clock" className="text-foreground-400 w-4 h-4" />}
             endContent={<Icon icon="lucide:chevron-down" className="text-foreground-400 w-4 h-4" />}
           >
-            <div className="flex flex-col items-start">
+            <div className="flex flex-col items-start flex-1 mx-2">
               <span className="text-xs text-foreground-500 font-normal">{label}</span>
-              <span className="text-sm font-medium">
-                {displayTime}
-              </span>
+              {displayTime && (
+                <span className="text-sm font-medium">
+                  {displayTime}
+                </span>
+              )}
             </div>
           </Button>
         </PopoverTrigger>
