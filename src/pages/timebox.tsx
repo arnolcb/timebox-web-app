@@ -44,29 +44,13 @@ export const TimeboxPage: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [localTitle, timebox, updateTimebox]);
   
-  // Auto-save date
-  React.useEffect(() => {
-    if (!timebox || localDate === timebox.date) return;
-    
-    const timeoutId = setTimeout(async () => {
-      try {
-        await updateTimebox({ date: localDate });
-      } catch (error) {
-        console.error('Failed to update date:', error);
-      }
-    }, 500);
-    
-    return () => clearTimeout(timeoutId);
-  }, [localDate, timebox, updateTimebox]);
-  
   const handleSave = async () => {
     if (!timebox) return;
     
     try {
       setIsUpdating(true);
       await updateTimebox({
-        title: localTitle,
-        date: localDate
+        title: localTitle
       });
       // Could show success message here
     } catch (error) {
@@ -129,18 +113,21 @@ export const TimeboxPage: React.FC = () => {
             }}
             placeholder="Enter timebox title..."
           />
-          <Input
-            type="date"
-            value={localDate}
-            onValueChange={setLocalDate}
-            size="sm"
-            variant="bordered"
-            className="max-w-xs"
-            classNames={{
-              inputWrapper: "border-none bg-transparent"
-            }}
-            startContent={<Icon icon="lucide:calendar" className="text-foreground-400" />}
-          />
+          {/* Date display - read only with timezone fix */}
+          <div className="flex items-center gap-2 mt-2 text-sm text-foreground-500">
+            <Icon icon="lucide:calendar" className="w-4 h-4" />
+            <span>{(() => {
+              // Fix timezone issue by parsing date in local timezone
+              const [year, month, day] = localDate.split('-').map(Number);
+              const date = new Date(year, month - 1, day); // month is 0-indexed
+              return date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              });
+            })()}</span>
+          </div>
         </div>
         
         <div className="flex gap-2">

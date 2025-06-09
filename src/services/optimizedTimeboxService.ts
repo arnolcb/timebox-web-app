@@ -242,7 +242,9 @@ export class OptimizedTimeboxService {
 
   static formatDateTitle(dateString: string): string {
     try {
-      const date = new Date(dateString);
+      // Fix timezone issue by parsing date in local timezone
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day); // month is 0-indexed
       return date.toLocaleDateString('en-US', { 
         weekday: 'long', 
         month: 'long', 

@@ -115,10 +115,12 @@ export class TimeboxService {
     return !snapshot.empty;
   }
 
-  // Formatear título de fecha
+  // Formatear título de fecha con fix de timezone
   static formatDateTitle(dateString: string): string {
     try {
-      const date = new Date(dateString);
+      // Parse the date in local timezone to avoid timezone offset issues
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day); // month is 0-indexed
       return date.toLocaleDateString('en-US', { 
         weekday: 'long', 
         month: 'long', 

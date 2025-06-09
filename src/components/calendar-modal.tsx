@@ -26,7 +26,10 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({ isOpen, onClose })
   // Generate default title when date changes
   React.useEffect(() => {
     try {
-      const date = new Date(selectedDate.toString());
+      // Fix timezone issue by parsing date in local timezone
+      const dateStr = selectedDate.toString();
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day); // month is 0-indexed
       const defaultTitle = date.toLocaleDateString('en-US', { 
         weekday: 'long', 
         month: 'long', 
