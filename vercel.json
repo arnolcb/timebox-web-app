@@ -1,8 +1,22 @@
 {
+  "build": {
+    "env": {
+      "VITE_BASE_PATH": "/app"
+    }
+  },
+  "functions": {
+    "app/**": {
+      "includeFiles": "dist/**"
+    }
+  },
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/app/(.*)",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/app",
+      "destination": "/app/index.html"
     }
   ]
 }

@@ -1,21 +1,18 @@
-// vite.config.js
+// vite.config.ts
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import vitePluginInjectDataLocator from "./plugins/vite-plugin-inject-data-locator";
+import vitePluginInjectDataLocator from "./plugins/vite-plugin-inject-data-locator.ts";
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), vitePluginInjectDataLocator()],
+  base: "/app/",
   server: {
     allowedHosts: true,
-    // Opcional: reduce logs molestos
     middlewareMode: false,
   },
-  // Suprimir warnings innecesarios en desarrollo
   define: { 
     'process.env': {},
   },
-  // Optimizar build para producción
   build: {
     rollupOptions: {
       output: {

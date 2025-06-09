@@ -24,7 +24,7 @@ const PageLoader = () => (
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/app">
       <AuthProvider>
         <Switch>
           <Route path="/login">
