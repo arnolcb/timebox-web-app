@@ -1,27 +1,25 @@
-// vite.config.js
+// vite.config.ts
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import vitePluginInjectDataLocator from "./plugins/vite-plugin-inject-data-locator";
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), vitePluginInjectDataLocator()],
+  base: "/app/", // ← AÑADIR ESTA LÍNEA - CRUCIAL
   server: {
     allowedHosts: true,
-    // Opcional: reduce logs molestos
     middlewareMode: false,
   },
-  // Suprimir warnings innecesarios en desarrollo
   define: { 
     'process.env': {},
   },
-  // Optimizar build para producción
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
+          vendor: ['react', 'react-dom', 'react-router-dom'],
           firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+          ui: ['@heroui/react']
         }
       }
     }
