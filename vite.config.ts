@@ -5,12 +5,12 @@ import vitePluginInjectDataLocator from "./plugins/vite-plugin-inject-data-locat
 
 export default defineConfig({
   plugins: [react(), vitePluginInjectDataLocator()],
-  base: "/app/", // ← AÑADIR ESTA LÍNEA - CRUCIAL
+  // NO usar base aquí para Vercel
   server: {
     allowedHosts: true,
     middlewareMode: false,
   },
-  define: { 
+  define: {
     'process.env': {},
   },
   build: {

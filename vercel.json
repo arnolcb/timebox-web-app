@@ -1,44 +1,18 @@
 {
-  "build": {
-    "env": {
-      "VITE_BASE_PATH": "/app"
-    }
-  },
   "rewrites": [
     {
       "source": "/app/(.*)",
-      "destination": "/app/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/app",
-      "destination": "/app/index.html"
+      "destination": "/index.html"
     }
   ],
   "redirects": [
     {
       "source": "/",
-      "destination": "/app/",
-      "permanent": false
-    }
-  ],
-  "headers": [
-    {
-      "source": "/app/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/app/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control", 
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
+      "destination": "/app/"
     }
   ]
 }
